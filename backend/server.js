@@ -255,7 +255,7 @@ app.post('/api/playlists/:id/songs', async (req, res) => {
     res.status(201).json({ song, playlist });
   } catch (err) {
     console.error('[POST /songs]', err.message);
-    res.status(500).json({ error: 'Failed to fetch video info. The video may be unavailable or private.' });
+    res.status(500).json({ error: `Failed to fetch video info: ${err.message}` });
   }
 });
 
