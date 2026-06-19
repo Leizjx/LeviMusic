@@ -28,18 +28,21 @@ const ytDlpCmd = fs.existsSync(localYtDlp) ? localYtDlp : 'yt-dlp';
 
 // ─── yt-dlp helpers ───────────────────────────────────────────────────────────
 async function runYtDlp(args) {
+  const cookiesPath = path.join(__dirname, 'cookies.txt');
+  const finalArgs = fs.existsSync(cookiesPath) ? ['--cookies', cookiesPath, ...args] : args;
+
   try {
-    const { stdout } = await execFileAsync(ytDlpCmd, args, { maxBuffer: 10 * 1024 * 1024 });
+    const { stdout } = await execFileAsync(ytDlpCmd, finalArgs, { maxBuffer: 10 * 1024 * 1024 });
     return stdout;
   } catch (err) {
     try {
-      const { stdout } = await execFileAsync('python', ['-m', 'yt_dlp', ...args], {
+      const { stdout } = await execFileAsync('python', ['-m', 'yt_dlp', ...finalArgs], {
         maxBuffer: 10 * 1024 * 1024,
       });
       return stdout;
     } catch (err2) {
       try {
-        const { stdout } = await execFileAsync('python3', ['-m', 'yt_dlp', ...args], {
+        const { stdout } = await execFileAsync('python3', ['-m', 'yt_dlp', ...finalArgs], {
           maxBuffer: 10 * 1024 * 1024,
         });
         return stdout;
@@ -51,16 +54,19 @@ async function runYtDlp(args) {
 }
 
 function spawnYtDlp(args) {
+  const cookiesPath = path.join(__dirname, 'cookies.txt');
+  const finalArgs = fs.existsSync(cookiesPath) ? ['--cookies', cookiesPath, ...args] : args;
+
   if (fs.existsSync(localYtDlp)) {
-    return spawn(localYtDlp, args, { windowsHide: true });
+    return spawn(localYtDlp, finalArgs, { windowsHide: true });
   }
   try {
-    return spawn('yt-dlp', args, { windowsHide: true });
+    return spawn('yt-dlp', finalArgs, { windowsHide: true });
   } catch {
     try {
-      return spawn('python', ['-m', 'yt_dlp', ...args], { windowsHide: true });
+      return spawn('python', ['-m', 'yt_dlp', ...finalArgs], { windowsHide: true });
     } catch {
-      return spawn('python3', ['-m', 'yt_dlp', ...args], { windowsHide: true });
+      return spawn('python3', ['-m', 'yt_dlp', ...finalArgs], { windowsHide: true });
     }
   }
 }

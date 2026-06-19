@@ -29,6 +29,7 @@ backend/.env
 backend/data.json
 backend/*-player-script.js
 backend/yt-dlp
+backend/cookies.txt
 
 # Frontend build files
 frontend/dist/
