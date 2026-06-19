@@ -5,7 +5,7 @@ import Player from './components/Player';
 import SongQueue from './components/SongQueue';
 import Toast from './components/Toast';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 export default function App() {
   // ── Playlist state ────────────────────────────────────────────────────────

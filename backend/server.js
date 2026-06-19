@@ -17,7 +17,7 @@ const supabase = createClient(
 );
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(cors({ origin: 'http://localhost:5173' }));
+app.use(cors());
 app.use(express.json());
 
 const fs = require('fs');

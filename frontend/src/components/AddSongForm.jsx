@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 export default function AddSongForm({ playlists, activePlaylistId, onSongAdded, onNeedPlaylist }) {
   const [url, setUrl] = useState('');
