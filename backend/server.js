@@ -11,17 +11,16 @@ const path = require('path');
 // ─── Self-heal cookies.txt (convert spaces to tabs) ───────────────────────────
 const healCookiesFile = () => {
   const cookiesPath = path.join(__dirname, 'cookies.txt');
+  const healedPath = path.join(__dirname, 'cookies_healed.txt');
   if (!fs.existsSync(cookiesPath)) return;
   try {
     let content = fs.readFileSync(cookiesPath, 'utf8');
     const lines = content.split(/\r?\n/);
-    let modified = false;
     const fixedLines = lines.map(line => {
       if (!line.trim() || line.startsWith('#')) return line;
       if (!line.includes('\t')) {
         const parts = line.split(/[ \t]+/);
         if (parts.length >= 7) {
-          modified = true;
           const first6 = parts.slice(0, 6);
           const last = parts.slice(6).join(' ');
           return [...first6, last].join('\t');
@@ -30,15 +29,44 @@ const healCookiesFile = () => {
       return line;
     });
 
-    if (modified) {
-      fs.writeFileSync(cookiesPath, fixedLines.join('\n'), 'utf8');
-      console.log('[cookies.txt] Automatically converted spaces to tabs for Netscape format!');
-    }
+    fs.writeFileSync(healedPath, fixedLines.join('\n'), 'utf8');
+    console.log('[cookies.txt] Successfully healed into cookies_healed.txt!');
   } catch (err) {
-    console.error('[cookies.txt] Healing failed:', err.message);
+    console.warn('[cookies.txt] Healing failed to write locally, trying /tmp...:', err.message);
+    try {
+      const tempHealedPath = '/tmp/cookies_healed.txt';
+      let content = fs.readFileSync(cookiesPath, 'utf8');
+      const lines = content.split(/\r?\n/);
+      const fixedLines = lines.map(line => {
+        if (!line.trim() || line.startsWith('#')) return line;
+        if (!line.includes('\t')) {
+          const parts = line.split(/[ \t]+/);
+          if (parts.length >= 7) {
+            const first6 = parts.slice(0, 6);
+            const last = parts.slice(6).join(' ');
+            return [...first6, last].join('\t');
+          }
+        }
+        return line;
+      });
+      fs.writeFileSync(tempHealedPath, fixedLines.join('\n'), 'utf8');
+      console.log('[cookies.txt] Successfully healed into /tmp/cookies_healed.txt!');
+    } catch (err2) {
+      console.error('[cookies.txt] Healing completely failed:', err2.message);
+    }
   }
 };
 healCookiesFile();
+
+function getCookiesPath() {
+  const localHealed = path.join(__dirname, 'cookies_healed.txt');
+  if (fs.existsSync(localHealed)) return localHealed;
+  const tempHealed = '/tmp/cookies_healed.txt';
+  if (fs.existsSync(tempHealed)) return tempHealed;
+  const original = path.join(__dirname, 'cookies.txt');
+  if (fs.existsSync(original)) return original;
+  return null;
+}
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -58,9 +86,9 @@ const ytDlpCmd = fs.existsSync(localYtDlp) ? localYtDlp : 'yt-dlp';
 
 // ─── yt-dlp helpers ───────────────────────────────────────────────────────────
 async function runYtDlp(args) {
-  const cookiesPath = path.join(__dirname, 'cookies.txt');
+  const cookiesPath = getCookiesPath();
   const baseArgs = ['--js-runtimes', 'node', '--remote-components', 'ejs:github'];
-  const finalArgs = fs.existsSync(cookiesPath) ? ['--cookies', cookiesPath, ...baseArgs, ...args] : [...baseArgs, ...args];
+  const finalArgs = cookiesPath ? ['--cookies', cookiesPath, ...baseArgs, ...args] : [...baseArgs, ...args];
 
   try {
     const { stdout } = await execFileAsync(ytDlpCmd, finalArgs, { maxBuffer: 10 * 1024 * 1024 });
@@ -85,9 +113,9 @@ async function runYtDlp(args) {
 }
 
 function spawnYtDlp(args) {
-  const cookiesPath = path.join(__dirname, 'cookies.txt');
+  const cookiesPath = getCookiesPath();
   const baseArgs = ['--js-runtimes', 'node', '--remote-components', 'ejs:github'];
-  const finalArgs = fs.existsSync(cookiesPath) ? ['--cookies', cookiesPath, ...baseArgs, ...args] : [...baseArgs, ...args];
+  const finalArgs = cookiesPath ? ['--cookies', cookiesPath, ...baseArgs, ...args] : [...baseArgs, ...args];
 
   if (fs.existsSync(localYtDlp)) {
     return spawn(localYtDlp, finalArgs, { windowsHide: true });

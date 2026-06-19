@@ -30,6 +30,7 @@ backend/data.json
 backend/*-player-script.js
 backend/yt-dlp
 backend/cookies.txt
+backend/cookies_healed.txt
 
 # Frontend build files
 frontend/dist/
