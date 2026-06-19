@@ -59,7 +59,8 @@ const ytDlpCmd = fs.existsSync(localYtDlp) ? localYtDlp : 'yt-dlp';
 // ─── yt-dlp helpers ───────────────────────────────────────────────────────────
 async function runYtDlp(args) {
   const cookiesPath = path.join(__dirname, 'cookies.txt');
-  const finalArgs = fs.existsSync(cookiesPath) ? ['--cookies', cookiesPath, ...args] : args;
+  const baseArgs = ['--js-runtimes', 'node', '--remote-components', 'ejs:github'];
+  const finalArgs = fs.existsSync(cookiesPath) ? ['--cookies', cookiesPath, ...baseArgs, ...args] : [...baseArgs, ...args];
 
   try {
     const { stdout } = await execFileAsync(ytDlpCmd, finalArgs, { maxBuffer: 10 * 1024 * 1024 });
@@ -85,7 +86,8 @@ async function runYtDlp(args) {
 
 function spawnYtDlp(args) {
   const cookiesPath = path.join(__dirname, 'cookies.txt');
-  const finalArgs = fs.existsSync(cookiesPath) ? ['--cookies', cookiesPath, ...args] : args;
+  const baseArgs = ['--js-runtimes', 'node', '--remote-components', 'ejs:github'];
+  const finalArgs = fs.existsSync(cookiesPath) ? ['--cookies', cookiesPath, ...baseArgs, ...args] : [...baseArgs, ...args];
 
   if (fs.existsSync(localYtDlp)) {
     return spawn(localYtDlp, finalArgs, { windowsHide: true });
