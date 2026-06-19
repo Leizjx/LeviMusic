@@ -20,24 +20,48 @@ const supabase = createClient(
 app.use(cors({ origin: 'http://localhost:5173' }));
 app.use(express.json());
 
+const fs = require('fs');
+const path = require('path');
+
+const localYtDlp = path.join(__dirname, 'yt-dlp');
+const ytDlpCmd = fs.existsSync(localYtDlp) ? localYtDlp : 'yt-dlp';
+
 // ─── yt-dlp helpers ───────────────────────────────────────────────────────────
 async function runYtDlp(args) {
   try {
-    const { stdout } = await execFileAsync('yt-dlp', args, { maxBuffer: 10 * 1024 * 1024 });
+    const { stdout } = await execFileAsync(ytDlpCmd, args, { maxBuffer: 10 * 1024 * 1024 });
     return stdout;
-  } catch {
-    const { stdout } = await execFileAsync('python', ['-m', 'yt_dlp', ...args], {
-      maxBuffer: 10 * 1024 * 1024,
-    });
-    return stdout;
+  } catch (err) {
+    try {
+      const { stdout } = await execFileAsync('python', ['-m', 'yt_dlp', ...args], {
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      return stdout;
+    } catch (err2) {
+      try {
+        const { stdout } = await execFileAsync('python3', ['-m', 'yt_dlp', ...args], {
+          maxBuffer: 10 * 1024 * 1024,
+        });
+        return stdout;
+      } catch (err3) {
+        throw new Error(`yt-dlp failed to execute: ${err.message} | ${err2.message} | ${err3.message}`);
+      }
+    }
   }
 }
 
 function spawnYtDlp(args) {
+  if (fs.existsSync(localYtDlp)) {
+    return spawn(localYtDlp, args, { windowsHide: true });
+  }
   try {
     return spawn('yt-dlp', args, { windowsHide: true });
   } catch {
-    return spawn('python', ['-m', 'yt_dlp', ...args], { windowsHide: true });
+    try {
+      return spawn('python', ['-m', 'yt_dlp', ...args], { windowsHide: true });
+    } catch {
+      return spawn('python3', ['-m', 'yt_dlp', ...args], { windowsHide: true });
+    }
   }
 }
 

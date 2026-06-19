@@ -28,6 +28,7 @@ Thumbs.db
 backend/.env
 backend/data.json
 backend/*-player-script.js
+backend/yt-dlp
 
 # Frontend build files
 frontend/dist/
