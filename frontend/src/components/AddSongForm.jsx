@@ -42,8 +42,13 @@ export default function AddSongForm({ playlists, activePlaylistId, onSongAdded, 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: trimmed }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to add song.');
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Server error (${res.status}): Unable to parse response.`);
+      }
+      if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
       onSongAdded(data.song, data.playlist);
       setUrl('');
     } catch (err) {

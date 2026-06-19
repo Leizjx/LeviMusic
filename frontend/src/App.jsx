@@ -32,13 +32,19 @@ export default function App() {
   // ── Load playlists on mount ───────────────────────────────────────────────
   useEffect(() => {
     fetch(`${API_BASE}/playlists`)
-      .then((r) => r.json())
-      .then(({ playlists: list }) => {
-        setPlaylists(list);
-        if (list.length > 0) setActivePlaylistId(list[0].id);
+      .then((r) => {
+        if (!r.ok) throw new Error(`Server returned status ${r.status}`);
+        return r.json();
       })
-      .catch((err) => console.error('[load playlists]', err));
-  }, []);
+      .then(({ playlists: list }) => {
+        setPlaylists(list || []);
+        if (list && list.length > 0) setActivePlaylistId(list[0].id);
+      })
+      .catch((err) => {
+        console.error('[load playlists]', err);
+        showToast('Failed to load playlists from server.', 'error');
+      });
+  }, [showToast]);
 
   // ── Playlist CRUD callbacks ───────────────────────────────────────────────
   const handlePlaylistCreate = useCallback((newPlaylist) => {
@@ -93,8 +99,13 @@ export default function App() {
       const res = await fetch(`${API_BASE}/playlists/${activePlaylistId}/songs/${videoId}`, {
         method: 'DELETE',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Server error (${res.status}): Unable to parse response.`);
+      }
+      if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
       setPlaylists((prev) => prev.map((p) => p.id === data.playlist.id ? data.playlist : p));
 
       // Adjust player index
@@ -123,8 +134,13 @@ export default function App() {
           body: JSON.stringify({ targetPlaylistId }),
         }
       );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error(`Server error (${res.status}): Unable to parse response.`);
+      }
+      if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
       setPlaylists((prev) => prev.map((p) => p.id === data.playlist.id ? data.playlist : p));
       const target = playlists.find((p) => p.id === targetPlaylistId);
       showToast(`Added to "${target?.name}"!`, 'success');

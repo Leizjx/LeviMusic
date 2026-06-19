@@ -21,8 +21,13 @@ export default function PlaylistSidebar({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error(`Server error (${res.status}): Unable to parse response.`);
+    }
+    if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
     onCreate(data.playlist);
   };
 
@@ -32,8 +37,13 @@ export default function PlaylistSidebar({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error(`Server error (${res.status}): Unable to parse response.`);
+    }
+    if (!res.ok) throw new Error(data?.error || `Server error (${res.status})`);
     onRename(data.playlist);
     setRenaming(null);
   };
@@ -41,7 +51,13 @@ export default function PlaylistSidebar({
   const handleDelete = async (playlist) => {
     if (!window.confirm(`Delete "${playlist.name}"? This cannot be undone.`)) return;
     const res = await fetch(`${API_BASE}/playlists/${playlist.id}`, { method: 'DELETE' });
-    if (res.ok) onDelete(playlist.id);
+    if (!res.ok) {
+      let data;
+      try { data = await res.json(); } catch { /* ignore */ }
+      alert(data?.error || `Failed to delete playlist (${res.status})`);
+      return;
+    }
+    onDelete(playlist.id);
   };
 
   return (
