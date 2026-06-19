@@ -5,6 +5,40 @@ const cors = require('cors');
 const { execFile, spawn } = require('child_process');
 const { promisify } = require('util');
 const { createClient } = require('@supabase/supabase-js');
+const fs = require('fs');
+const path = require('path');
+
+// ─── Self-heal cookies.txt (convert spaces to tabs) ───────────────────────────
+const healCookiesFile = () => {
+  const cookiesPath = path.join(__dirname, 'cookies.txt');
+  if (!fs.existsSync(cookiesPath)) return;
+  try {
+    let content = fs.readFileSync(cookiesPath, 'utf8');
+    const lines = content.split(/\r?\n/);
+    let modified = false;
+    const fixedLines = lines.map(line => {
+      if (!line.trim() || line.startsWith('#')) return line;
+      if (!line.includes('\t')) {
+        const parts = line.split(/[ \t]+/);
+        if (parts.length >= 7) {
+          modified = true;
+          const first6 = parts.slice(0, 6);
+          const last = parts.slice(6).join(' ');
+          return [...first6, last].join('\t');
+        }
+      }
+      return line;
+    });
+
+    if (modified) {
+      fs.writeFileSync(cookiesPath, fixedLines.join('\n'), 'utf8');
+      console.log('[cookies.txt] Automatically converted spaces to tabs for Netscape format!');
+    }
+  } catch (err) {
+    console.error('[cookies.txt] Healing failed:', err.message);
+  }
+};
+healCookiesFile();
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -19,10 +53,6 @@ const supabase = createClient(
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
-
-const fs = require('fs');
-const path = require('path');
-
 const localYtDlp = path.join(__dirname, 'yt-dlp');
 const ytDlpCmd = fs.existsSync(localYtDlp) ? localYtDlp : 'yt-dlp';
 
