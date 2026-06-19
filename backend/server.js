@@ -94,20 +94,35 @@ async function runYtDlp(args) {
     const { stdout } = await execFileAsync(ytDlpCmd, finalArgs, { maxBuffer: 10 * 1024 * 1024 });
     return stdout;
   } catch (err) {
+    // If it failed and we used cookies, retry WITHOUT cookies!
+    if (cookiesPath) {
+      console.warn(`[yt-dlp] Command failed with cookies, retrying WITHOUT cookies... Error: ${err.message}`);
+      const noCookiesArgs = [...baseArgs, ...args];
+      try {
+        const { stdout } = await execFileAsync(ytDlpCmd, noCookiesArgs, { maxBuffer: 10 * 1024 * 1024 });
+        return stdout;
+      } catch (retryErr) {
+        return await runYtDlpFallback(noCookiesArgs, retryErr);
+      }
+    }
+    return await runYtDlpFallback(finalArgs, err);
+  }
+}
+
+async function runYtDlpFallback(finalArgs, originalErr) {
+  try {
+    const { stdout } = await execFileAsync('python', ['-m', 'yt_dlp', ...finalArgs], {
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    return stdout;
+  } catch (err2) {
     try {
-      const { stdout } = await execFileAsync('python', ['-m', 'yt_dlp', ...finalArgs], {
+      const { stdout } = await execFileAsync('python3', ['-m', 'yt_dlp', ...finalArgs], {
         maxBuffer: 10 * 1024 * 1024,
       });
       return stdout;
-    } catch (err2) {
-      try {
-        const { stdout } = await execFileAsync('python3', ['-m', 'yt_dlp', ...finalArgs], {
-          maxBuffer: 10 * 1024 * 1024,
-        });
-        return stdout;
-      } catch (err3) {
-        throw new Error(`yt-dlp failed to execute: ${err.message} | ${err2.message} | ${err3.message}`);
-      }
+    } catch (err3) {
+      throw new Error(`yt-dlp failed to execute: ${originalErr.message} | ${err2.message} | ${err3.message}`);
     }
   }
 }
@@ -291,7 +306,7 @@ app.post('/api/playlists/:id/songs', async (req, res) => {
   try {
     const raw = await runYtDlp([
       '--dump-json', '--flat-playlist', '--no-playlist', '--no-warnings', '--quiet',
-      '--extractor-args', 'youtube:player_client=android',
+      '--extractor-args', 'youtube:player_client=ios,android,web,tv',
       `https://www.youtube.com/watch?v=${videoId}`,
     ]);
     const info = JSON.parse(raw);
@@ -418,7 +433,7 @@ app.get('/api/stream/:videoId', (req, res) => {
     '-f', 'bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best',
     '-o', '-',
     '--no-playlist',
-    '--extractor-args', 'youtube:player_client=android',
+    '--extractor-args', 'youtube:player_client=ios,android,web,tv',
     `https://www.youtube.com/watch?v=${videoId}`,
   ];
 
