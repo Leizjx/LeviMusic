@@ -382,4 +382,21 @@ app.listen(PORT, () => {
   console.log(`   DB      : Supabase (${process.env.SUPABASE_URL})`);
   console.log(`   Stream  : GET  /api/stream/:videoId`);
   console.log(`   Add     : POST /api/playlists/:id/songs\n`);
+
+  // Optional self-ping to prevent Render service from sleeping
+  const publicUrl = process.env.PUBLIC_URL;
+  if (publicUrl) {
+    const urlToCheck = publicUrl.endsWith('/') ? `${publicUrl}api/health` : `${publicUrl}/api/health`;
+    console.log(`[self-ping] Initialized targeting: ${urlToCheck}`);
+    
+    // Ping every 12 minutes (Render sleeps after 15 minutes of inactivity)
+    setInterval(() => {
+      const protocol = urlToCheck.startsWith('https') ? require('https') : require('http');
+      protocol.get(urlToCheck, (res) => {
+        console.log(`[self-ping] Keep-alive ping sent. Response code: ${res.statusCode}`);
+      }).on('error', (err) => {
+        console.error('[self-ping] Keep-alive ping failed:', err.message);
+      });
+    }, 12 * 60 * 1000);
+  }
 });
