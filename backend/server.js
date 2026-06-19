@@ -231,6 +231,7 @@ app.post('/api/playlists/:id/songs', async (req, res) => {
   try {
     const raw = await runYtDlp([
       '--dump-json', '--no-playlist', '--no-warnings', '--quiet',
+      '--extractor-args', 'youtube:player-client=android',
       `https://www.youtube.com/watch?v=${videoId}`,
     ]);
     const info = JSON.parse(raw);
@@ -357,6 +358,7 @@ app.get('/api/stream/:videoId', (req, res) => {
     '-f', 'bestaudio[ext=webm]/bestaudio[ext=m4a]/bestaudio/best',
     '-o', '-',
     '--no-playlist',
+    '--extractor-args', 'youtube:player-client=android',
     `https://www.youtube.com/watch?v=${videoId}`,
   ];
 
