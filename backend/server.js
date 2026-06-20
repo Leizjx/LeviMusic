@@ -10,9 +10,16 @@ const path = require('path');
 
 // ─── Self-heal cookies.txt (convert spaces to tabs) ───────────────────────────
 const healCookiesFile = () => {
-  const cookiesPath = path.join(__dirname, 'cookies.txt');
+  let cookiesPath = path.join(__dirname, 'cookies.txt');
+  if (!fs.existsSync(cookiesPath)) {
+    cookiesPath = path.join(__dirname, '..', 'cookies.txt');
+  }
+  if (!fs.existsSync(cookiesPath)) {
+    console.log('[cookies.txt] Not found in backend/ or root directory.');
+    return;
+  }
+
   const healedPath = path.join(__dirname, 'cookies_healed.txt');
-  if (!fs.existsSync(cookiesPath)) return;
   try {
     let content = fs.readFileSync(cookiesPath, 'utf8');
     const lines = content.split(/\r?\n/);
@@ -65,6 +72,8 @@ function getCookiesPath() {
   if (fs.existsSync(tempHealed)) return tempHealed;
   const original = path.join(__dirname, 'cookies.txt');
   if (fs.existsSync(original)) return original;
+  const originalRoot = path.join(__dirname, '..', 'cookies.txt');
+  if (fs.existsSync(originalRoot)) return originalRoot;
   return null;
 }
 
@@ -451,6 +460,22 @@ app.get('/api/stream/:videoId', (req, res) => {
   ytProc.on('close', () => { if (!res.writableEnded) res.end(); });
   req.on('close', () => ytProc.kill('SIGTERM'));
   res.on('error', () => ytProc.kill('SIGTERM'));
+});
+
+// ─── Debug cookies ────────────────────────────────────────────────────────────
+app.get('/api/debug-cookies', (req, res) => {
+  const localCookies = path.join(__dirname, 'cookies.txt');
+  const rootCookies = path.join(__dirname, '..', 'cookies.txt');
+  const localHealed = path.join(__dirname, 'cookies_healed.txt');
+  const tempHealed = '/tmp/cookies_healed.txt';
+
+  res.json({
+    localCookies: { path: localCookies, exists: fs.existsSync(localCookies) },
+    rootCookies: { path: rootCookies, exists: fs.existsSync(rootCookies) },
+    localHealed: { path: localHealed, exists: fs.existsSync(localHealed) },
+    tempHealed: { path: tempHealed, exists: fs.existsSync(tempHealed) },
+    resolvedPath: getCookiesPath(),
+  });
 });
 
 // ─── Health ───────────────────────────────────────────────────────────────────
