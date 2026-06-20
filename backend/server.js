@@ -478,6 +478,34 @@ app.get('/api/debug-cookies', (req, res) => {
   });
 });
 
+// ─── Test yt-dlp WITH cookies ──────────────────────────────────────────────────
+app.get('/api/test-ytdlp', async (req, res) => {
+  const { videoId } = req.query;
+  const targetId = videoId || 'OEz0WEErrSc';
+  
+  const cookiesPath = getCookiesPath();
+  const baseArgs = ['--js-runtimes', 'node', '--remote-components', 'ejs:github'];
+  const args = [
+    '--dump-json', '--flat-playlist', '--no-playlist', '--no-warnings',
+    '--extractor-args', 'youtube:player_client=ios,android,web,tv',
+    `https://www.youtube.com/watch?v=${targetId}`
+  ];
+  
+  const finalArgs = cookiesPath ? ['--cookies', cookiesPath, ...baseArgs, ...args] : [...baseArgs, ...args];
+  
+  try {
+    const { stdout, stderr } = await execFileAsync(ytDlpCmd, finalArgs, { maxBuffer: 10 * 1024 * 1024 });
+    res.json({ success: true, stdout: stdout.substring(0, 1000), stderr });
+  } catch (err) {
+    res.json({
+      success: false,
+      message: err.message,
+      stdout: err.stdout ? err.stdout.substring(0, 1000) : '',
+      stderr: err.stderr,
+    });
+  }
+});
+
 // ─── Health ───────────────────────────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {
   const { count } = await supabase.from('playlists').select('*', { count: 'exact', head: true });
