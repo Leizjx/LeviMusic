@@ -38,6 +38,8 @@ export default function Player({
   const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [seekOffset, setSeekOffset] = useState(0);
+  const seekOffsetRef = useRef(0);
   const progressRef = useRef(null);
 
   // When streaming via yt-dlp pipe there's no Content-Length, so
@@ -52,12 +54,20 @@ export default function Player({
     if (!audio || !song) return;
 
     const newSrc = `${API_BASE}/stream/${song.videoId}`;
-    if (audio.src !== newSrc) {
+    const getSrcVideoId = (srcUrl) => {
+      if (!srcUrl) return null;
+      const match = srcUrl.match(/\/api\/stream\/([\w-]+)/);
+      return match ? match[1] : null;
+    };
+
+    if (getSrcVideoId(audio.src) !== song.videoId) {
       audio.src = newSrc;
       audio.load();
       setIsLoading(true);
       setCurrentTime(0);
       setDuration(0);
+      setSeekOffset(0);
+      seekOffsetRef.current = 0;
     }
 
     if (isPlaying) {
@@ -81,7 +91,7 @@ export default function Player({
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const onTimeUpdate = () => setCurrentTime(seekOffsetRef.current + audio.currentTime);
     const onLoadedMetadata = () => {
       // Guard: piped streams report Infinity; keep 0 so we fall back to song.durationSeconds
       const d = audio.duration;
@@ -115,9 +125,16 @@ export default function Player({
     const audio = audioRef.current;
     if (!audio || !effectiveDuration) return;
     const newTime = (e.target.value / 100) * effectiveDuration;
-    audio.currentTime = newTime;
+    
+    seekOffsetRef.current = newTime;
+    setSeekOffset(newTime);
+    audio.src = `${API_BASE}/stream/${song.videoId}?start=${Math.floor(newTime)}`;
+    audio.load();
+    if (isPlaying) {
+      audio.play().catch((err) => console.error(err));
+    }
     setCurrentTime(newTime);
-  }, [audioRef, effectiveDuration]);
+  }, [audioRef, effectiveDuration, song, isPlaying]);
 
   const progressPercent = effectiveDuration > 0 ? (currentTime / effectiveDuration) * 100 : 0;
 
@@ -135,7 +152,18 @@ export default function Player({
     </div>
   );
 
-  if (!song) return <EmptyState />;
+  if (!song) return (
+    <>
+      <EmptyState />
+      <audio
+        ref={audioRef}
+        onEnded={onEnded}
+        preload="metadata"
+        className="hidden"
+        id="main-audio-player"
+      />
+    </>
+  );
 
   return (
     <div className="glass-card p-6 flex flex-col gap-5 animate-slide-up">

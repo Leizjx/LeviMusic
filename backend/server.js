@@ -96,7 +96,7 @@ const ytDlpCmd = fs.existsSync(localYtDlp) ? localYtDlp : 'yt-dlp';
 // ─── yt-dlp helpers ───────────────────────────────────────────────────────────
 async function runYtDlp(args) {
   const cookiesPath = getCookiesPath();
-  const baseArgs = ['--js-runtimes', 'node', '--remote-components', 'ejs:github'];
+  const baseArgs = ['--js-runtimes', 'node', '--remote-components', 'ejs:github', '--ffmpeg-location', __dirname];
   const finalArgs = cookiesPath ? ['--cookies', cookiesPath, ...baseArgs, ...args] : [...baseArgs, ...args];
 
   try {
@@ -138,7 +138,7 @@ async function runYtDlpFallback(finalArgs, originalErr) {
 
 function spawnYtDlp(args) {
   const cookiesPath = getCookiesPath();
-  const baseArgs = ['--js-runtimes', 'node', '--remote-components', 'ejs:github'];
+  const baseArgs = ['--js-runtimes', 'node', '--remote-components', 'ejs:github', '--ffmpeg-location', __dirname];
   const finalArgs = cookiesPath ? ['--cookies', cookiesPath, ...baseArgs, ...args] : [...baseArgs, ...args];
 
   if (fs.existsSync(localYtDlp)) {
@@ -433,9 +433,10 @@ function dbSongToClient(row) {
 
 app.get('/api/stream/:videoId', (req, res) => {
   const { videoId } = req.params;
+  const { start } = req.query;
   if (!/^[\w-]{11}$/.test(videoId)) return res.status(400).json({ error: 'Invalid video ID.' });
 
-  console.log(`[stream] ${videoId}`);
+  console.log(`[stream] ${videoId} (start: ${start || 0}s)`);
 
   const ytArgs = [
     '--no-warnings', '--quiet',
@@ -443,8 +444,13 @@ app.get('/api/stream/:videoId', (req, res) => {
     '-o', '-',
     '--no-playlist',
     '--extractor-args', 'youtube:player_client=ios,android,web,tv',
-    `https://www.youtube.com/watch?v=${videoId}`,
   ];
+
+  if (start && !isNaN(start) && parseInt(start) > 0) {
+    ytArgs.push('--download-sections', `*${parseInt(start)}-inf`);
+  }
+
+  ytArgs.push(`https://www.youtube.com/watch?v=${videoId}`);
 
   res.setHeader('Content-Type', 'audio/webm');
   res.setHeader('Accept-Ranges', 'none');
